@@ -18,6 +18,10 @@ pub enum TryFromVlqError {
     NumberTooLarge,
 }
 
+pub trait ReadVlqExt<T>: std::io::Read {
+    fn read_vlq(&mut self) -> std::io::Result<T>;
+}
+
 macro_rules! impl_vlq {
     ($ty:ty) => {
         impl_vlq!($ty, $ty);
@@ -54,6 +58,33 @@ macro_rules! impl_vlq {
                 Vlq(o)
             }
         }
+
+        impl<R: std::io::Read> $crate::ReadVlqExt<$ty> for R {
+            fn read_vlq(&mut self) -> std::io::Result<$ty> {
+                use std::convert::TryFrom;
+                let mut vlq_buf = Vec::with_capacity(std::mem::size_of::<$ty>());
+
+                {
+                    let mut buf = [0; 1];
+
+                    loop {
+                        self.read_exact(&mut buf)?;
+                        vlq_buf.push(buf[0]);
+                        if (buf[0] & 0b1000_0000) != 0 {
+                            break;
+                        }
+                    }
+                }
+
+                let vlq = Vlq(vlq_buf);
+                <$ty>::try_from(vlq).map_err(|_| {
+                    std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        concat!("provided VLQ data too long to fit into ", stringify!($ty)),
+                    )
+                })
+            }
+        }
     };
 }
 
@@ -72,6 +103,7 @@ impl_vlq!(usize);
 
 #[cfg(test)]
 mod tests {
+    use super::ReadBytesExt;
     use super::*;
     use std::convert::TryFrom;
 
@@ -80,6 +112,19 @@ mod tests {
         let garbage = Vlq(vec![]);
         let y = u8::try_from(garbage).unwrap();
         assert_eq!(y, 0);
+    }
+
+    #[test]
+    fn read() {
+        let vlq = Vlq::from(std::u64::MAX);
+        let mut data = std::io::Cursor::new(&*vlq);
+        let x: u64 = data.read_vlq().unwrap();
+        assert_eq!(x, std::u64::MAX);
+
+        let vlq = Vlq::from(std::i64::MIN);
+        let mut data = std::io::Cursor::new(&*vlq);
+        let x: i64 = data.read_vlq().unwrap();
+        assert_eq!(x, std::i64::MIN);
     }
 
     #[test]
