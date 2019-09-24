@@ -103,7 +103,7 @@ impl_vlq!(usize);
 
 #[cfg(test)]
 mod tests {
-    use super::ReadBytesExt;
+    use super::ReadVlqExt;
     use super::*;
     use std::convert::TryFrom;
 
