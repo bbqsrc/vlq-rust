@@ -1,6 +1,16 @@
 # vlq
 
+[![Actions Status](https://github.com/bbqsrc/vlq-rust/workflows/Continuous%20Integration/badge.svg)](https://github.com/bbqsrc/vlq-rust/actions)
+
 Encode and decode [variable-length quantity](https://en.wikipedia.org/wiki/Variable-length_quantity) data.
+
+## Usage
+
+Add this to your `Cargo.toml`:
+
+```
+vlq = { package = "vlq-rust", version = "0.1.0" }
+```
 
 ## License
 
