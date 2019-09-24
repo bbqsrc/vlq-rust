@@ -1,15 +1,39 @@
+use std::fmt;
+
+/// The maximum capacity that can be stored inline in the Vlq representation.
+const CAP: usize = 23;
+
 #[derive(Debug)]
 pub struct VlqError;
 
-#[derive(Debug, Clone)]
-#[repr(transparent)]
-pub struct Vlq(Vec<u8>);
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Vlq {
+    len: u8,
+    buf: [u8; CAP],
+}
+
+/// Format the vlq number using a binary representation for debugging purposes.
+pub fn bin(vlq: &Vlq) -> Bin<'_> {
+    Bin(vlq)
+}
+
+pub struct Bin<'a>(&'a [u8]);
+
+impl fmt::Display for Bin<'_> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for b in self.0 {
+            write!(fmt, "{:08b}", b)?;
+        }
+
+        Ok(())
+    }
+}
 
 impl std::ops::Deref for Vlq {
     type Target = [u8];
 
     fn deref(&self) -> &Self::Target {
-        &self.0
+        &self.buf[..(self.len as usize)]
     }
 }
 
@@ -31,7 +55,7 @@ macro_rules! impl_vlq {
             type Error = TryFromVlqError;
 
             fn try_from(vlq: Vlq) -> Result<$ty, Self::Error> {
-                let mut iter = vlq.0.iter().rev();
+                let mut iter = vlq.iter().rev();
                 let init = (iter.next().unwrap_or(&0) & 0b0111_1111) as $ty;
                 iter.try_fold(init, |acc, cur| {
                     let acc = acc.checked_shl(7).ok_or(TryFromVlqError::NumberTooLarge)?;
@@ -43,40 +67,56 @@ macro_rules! impl_vlq {
         impl From<$ty> for Vlq {
             fn from(n: $ty) -> Self {
                 let mut n = n as $uty;
-                let mut o = Vec::with_capacity(std::mem::size_of::<$ty>());
+                let mut vlq_buf = [0u8; CAP];
+                let mut index = 0;
 
                 while n > 0 {
-                    o.push((n & 0b0111_1111) as u8);
+                    vlq_buf[index] = (n & 0b0111_1111) as u8;
+                    index += 1;
                     n >>= 7;
                 }
 
-                match o.last_mut() {
-                    Some(v) => *v |= 0b1000_0000,
-                    None => o.push(0b1000_0000),
+                match index {
+                    0 => {
+                        vlq_buf[index] = 0b1000_0000;
+                        index += 1;
+                    }
+                    n => {
+                        vlq_buf[n - 1] |= 0b1000_0000;
+                    }
                 }
 
-                Vlq(o)
+                Vlq {
+                    len: index as u8,
+                    buf: vlq_buf,
+                }
             }
         }
 
         impl<R: std::io::Read> $crate::ReadVlqExt<$ty> for R {
             fn read_vlq(&mut self) -> std::io::Result<$ty> {
                 use std::convert::TryFrom;
-                let mut vlq_buf = Vec::with_capacity(std::mem::size_of::<$ty>());
+                let mut vlq_buf = [0u8; CAP];
+                let mut index = 0;
 
                 {
                     let mut buf = [0; 1];
 
                     loop {
                         self.read_exact(&mut buf)?;
-                        vlq_buf.push(buf[0]);
+                        vlq_buf[index] = buf[0];
+                        index += 1;
                         if (buf[0] & 0b1000_0000) != 0 {
                             break;
                         }
                     }
                 }
 
-                let vlq = Vlq(vlq_buf);
+                let vlq = Vlq {
+                    len: index as u8,
+                    buf: vlq_buf,
+                };
+
                 <$ty>::try_from(vlq).map_err(|_| {
                     std::io::Error::new(
                         std::io::ErrorKind::Other,
@@ -109,7 +149,7 @@ mod tests {
 
     #[test]
     fn invalid_empty_vlq() {
-        let garbage = Vlq(vec![]);
+        let garbage = Vlq::default();
         let y = u8::try_from(garbage).unwrap();
         assert_eq!(y, 0);
     }
