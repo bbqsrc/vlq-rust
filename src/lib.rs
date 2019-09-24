@@ -46,6 +46,10 @@ pub trait ReadVlqExt<T>: std::io::Read {
     fn read_vlq(&mut self) -> std::io::Result<T>;
 }
 
+pub trait WriteVlqExt<T>: std::io::Write {
+    fn write_vlq(&mut self, n: T) -> std::io::Result<()>;
+}
+
 macro_rules! impl_vlq {
     ($ty:ty) => {
         impl_vlq!($ty, $ty);
@@ -125,6 +129,12 @@ macro_rules! impl_vlq {
                 })
             }
         }
+
+        impl<W: std::io::Write> $crate::WriteVlqExt<$ty> for W {
+            fn write_vlq(&mut self, n: $ty) -> std::io::Result<()> {
+                self.write_all(&*Vlq::from(n))
+            }
+        }
     };
 }
 
@@ -165,6 +175,17 @@ mod tests {
         let mut data = std::io::Cursor::new(&*vlq);
         let x: i64 = data.read_vlq().unwrap();
         assert_eq!(x, std::i64::MIN);
+    }
+
+    #[test]
+    fn write() {
+        let mut data = std::io::Cursor::new(vec![]);
+        data.write_vlq(std::u64::MAX).unwrap();
+        assert_eq!(data.into_inner(), &*Vlq::from(std::u64::MAX));
+
+        let mut data = std::io::Cursor::new(vec![]);
+        data.write_vlq(std::i64::MAX).unwrap();
+        assert_eq!(data.into_inner(), &*Vlq::from(std::i64::MAX));
     }
 
     #[test]
