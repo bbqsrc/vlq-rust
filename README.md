@@ -9,6 +9,7 @@ Encode and decode [variable-length quantity](https://en.wikipedia.org/wiki/Varia
 Add this to your `Cargo.toml`:
 
 ```
+[dependencies]
 vlq = { package = "vlq-rust", version = "0.1.0" }
 ```
 
