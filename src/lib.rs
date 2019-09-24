@@ -1,0 +1,111 @@
+#[derive(Debug)]
+pub struct VlqError;
+
+#[derive(Debug, Clone)]
+#[repr(transparent)]
+pub struct Vlq(Vec<u8>);
+
+impl std::ops::Deref for Vlq {
+    type Target = [u8];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+#[derive(Debug)]
+pub enum TryFromVlqError {
+    NumberTooLarge,
+}
+
+macro_rules! impl_vlq {
+    ($ty:ty) => {
+        impl_vlq!($ty, $ty);
+    };
+    ($ty:ty, $uty:ty) => {
+        impl std::convert::TryFrom<Vlq> for $ty {
+            type Error = TryFromVlqError;
+
+            fn try_from(vlq: Vlq) -> Result<$ty, Self::Error> {
+                let mut iter = vlq.0.iter().rev();
+                let init = (iter.next().unwrap_or(&0) & 0b0111_1111) as $ty;
+                iter.try_fold(init, |acc, cur| {
+                    let acc = acc.checked_shl(7).ok_or(TryFromVlqError::NumberTooLarge)?;
+                    Ok(acc | (cur & 0b0111_1111) as $ty)
+                })
+            }
+        }
+
+        impl From<$ty> for Vlq {
+            fn from(n: $ty) -> Self {
+                let mut n = n as $uty;
+                let mut o = Vec::with_capacity(std::mem::size_of::<$ty>());
+
+                while n > 0 {
+                    o.push((n & 0b0111_1111) as u8);
+                    n >>= 7;
+                }
+
+                match o.last_mut() {
+                    Some(v) => *v |= 0b1000_0000,
+                    None => o.push(0b1000_0000),
+                }
+
+                Vlq(o)
+            }
+        }
+    };
+}
+
+impl_vlq!(i8, u8);
+impl_vlq!(i16, u16);
+impl_vlq!(i32, u32);
+impl_vlq!(i64, u64);
+impl_vlq!(i128, u128);
+impl_vlq!(isize, usize);
+impl_vlq!(u8);
+impl_vlq!(u16);
+impl_vlq!(u32);
+impl_vlq!(u64);
+impl_vlq!(u128);
+impl_vlq!(usize);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::convert::TryFrom;
+
+    #[test]
+    fn invalid_empty_vlq() {
+        let garbage = Vlq(vec![]);
+        let y = u8::try_from(garbage).unwrap();
+        assert_eq!(y, 0);
+    }
+
+    #[test]
+    fn it_works() {
+        let x = std::u8::MAX;
+        let y = u8::try_from(Vlq::from(x)).unwrap();
+        assert_eq!(x, y);
+
+        let x = std::i8::MIN;
+        let y = i8::try_from(Vlq::from(x)).unwrap();
+        assert_eq!(x, y);
+
+        let x = std::u64::MAX;
+        let y = u64::try_from(Vlq::from(x)).unwrap();
+        assert_eq!(x, y);
+
+        let x = std::i64::MIN;
+        let y = i64::try_from(Vlq::from(x)).unwrap();
+        assert_eq!(x, y);
+
+        let x = std::u128::MAX;
+        let y = u128::try_from(Vlq::from(x)).unwrap();
+        assert_eq!(x, y);
+
+        let x = std::i128::MIN;
+        let y = i128::try_from(Vlq::from(x)).unwrap();
+        assert_eq!(x, y);
+    }
+}
