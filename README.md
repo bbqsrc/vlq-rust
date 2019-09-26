@@ -16,7 +16,7 @@ vlq = { package = "vlq-rust", version = "0.2" }
 
 ## Where is this used?
 
-* [https://github.com/bbqsrc/box](box) - a modern replacement for the zip file format
+* [box](https://github.com/bbqsrc/box) - a modern replacement for the zip file format
 
 ## License
 
