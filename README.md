@@ -1,6 +1,7 @@
 # vlq
 
 [![Actions Status](https://github.com/bbqsrc/vlq-rust/workflows/Continuous%20Integration/badge.svg)](https://github.com/bbqsrc/vlq-rust/actions)
+[![Documentation](https://docs.rs/vlq-rust/badge.svg)](https://docs.rs/vlq-rust)
 
 Encode and decode [variable-length quantity](https://en.wikipedia.org/wiki/Variable-length_quantity) data.
 
@@ -8,10 +9,14 @@ Encode and decode [variable-length quantity](https://en.wikipedia.org/wiki/Varia
 
 Add this to your `Cargo.toml`:
 
-```
+```toml
 [dependencies]
-vlq = { package = "vlq-rust", version = "0.1.0" }
+vlq = { package = "vlq-rust", version = "0.2" }
 ```
+
+## Where is this used?
+
+* [https://github.com/bbqsrc/box](box) - a modern replacement for the zip file format
 
 ## License
 

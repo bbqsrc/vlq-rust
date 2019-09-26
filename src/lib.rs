@@ -1,3 +1,53 @@
+//! ## Algorithm
+//!
+//! Value-length quantity encoding is an implementation of variable-length integers.
+//!
+//! Each byte is encoded into 7 bits, with the highest bit of the byte used to indicate
+//! if there are any further bytes to read. Reading will continue until the highest bit
+//! is `1`, or will result in an error if the number is too large to fit in the desired
+//! type.
+//!
+//! For example, the number `60000` (or `0xEA60` in hexadecimal):
+//!
+//! ```markdown
+//!          11101010 01100000  [as u16]
+//!       11  1010100  1100000  [as separated into 7-bit groups]
+//! 10000011 01010100 01100000  [as VLQ-encoded variable-length integer]
+//! ```
+//!
+//! ## Usage
+//!
+//! Add this to your `Cargo.toml`:
+//!
+//! ```toml
+//! [dependencies]
+//! vlq = { package = "vlq-rust", version = "0.2" }
+//! ```
+//!
+//! Use `ReadVlqExt` and `WriteVlqExt` to get the `read_vlq` and `write_vlq` functions
+//! on every `std::io::Read` and `std::io::Write` implementation.
+//!
+//! ## Example
+//!
+//! ```
+//! # use vlq_rust as vlq;
+//! use vlq::{ReadVlqExt, WriteVlqExt};
+//!
+//! let mut data = std::io::Cursor::new(vec![]);
+//! data.write_vlq(std::u64::MAX).unwrap();
+//! data.set_position(0);
+//!
+//! let x: u64 = data.read_vlq().unwrap();
+//! assert_eq!(x, std::u64::MAX);
+//!
+//! let mut data = std::io::Cursor::new(vec![]);
+//! data.write_vlq(std::i64::MIN).unwrap();
+//! data.set_position(0);
+//!
+//! let x: i64 = data.read_vlq().unwrap();
+//! assert_eq!(x, std::i64::MIN);
+//! ```
+
 pub trait ReadVlqExt<T>: std::io::Read {
     fn read_vlq(&mut self) -> std::io::Result<T>;
 }
