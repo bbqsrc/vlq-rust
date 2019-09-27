@@ -80,7 +80,7 @@ pub fn decode(n: FastVlq) -> u64 {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 #[repr(transparent)]
 pub struct FastVlq([u8; 9]);
 
@@ -98,6 +98,12 @@ impl std::ops::Deref for FastVlq {
     #[inline(always)]
     fn deref(&self) -> &[u8] {
         &self.0
+    }
+}
+
+impl std::fmt::Debug for FastVlq {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(fmt, "FastVlq({})", self.0.iter().take(self.len() as usize).map(|x| format!("{:08b}", x)).collect::<Vec<_>>().join(" "))
     }
 }
 
