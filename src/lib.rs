@@ -64,33 +64,31 @@ macro_rules! impl_vlq {
     ($ty:ty, $uty:ty, $cap:expr) => {
         impl<R: std::io::Read> $crate::ReadVlqExt<$ty> for R {
             fn read_vlq(&mut self) -> std::io::Result<$ty> {
-                let mut vlq_buf = [0u8; $cap];
-                let mut index = 0;
+                let mut buf = [0; 1];
+                let mut value: $uty = 0;
+                let mut shift = 1 as $uty;
 
-                {
-                    let mut buf = [0; 1];
+                loop {
+                    self.read_exact(&mut buf)?;
 
-                    loop {
-                        self.read_exact(&mut buf)?;
-                        vlq_buf[index] = buf[0];
-                        index += 1;
-                        if (buf[0] & 0b1000_0000) != 0 {
-                            break;
-                        }
+                    value = ((buf[0] & 0b0111_1111) as $uty)
+                        .checked_mul(shift)
+                        .and_then(|add| value.checked_add(add))
+                        .ok_or_else(|| {
+                            std::io::Error::new(
+                                std::io::ErrorKind::Other,
+                                concat!("provided VLQ data too long to fit into ", stringify!($ty)),
+                            )
+                        })?;
+
+                    if (buf[0] & 0b1000_0000) != 0 {
+                        break;
                     }
+
+                    shift <<= 7;
                 }
 
-                let mut iter = vlq_buf.iter().rev();
-                let init = (iter.next().unwrap_or(&0) & 0b0111_1111) as $ty;
-                iter.try_fold(init, |acc, cur| {
-                    let acc = acc.checked_shl(7).ok_or_else(|| {
-                        std::io::Error::new(
-                            std::io::ErrorKind::Other,
-                            concat!("provided VLQ data too long to fit into ", stringify!($ty)),
-                        )
-                    })?;
-                    Ok(acc | (cur & 0b0111_1111) as $ty)
-                })
+                Ok(value as $ty)
             }
         }
 
