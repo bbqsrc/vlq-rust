@@ -49,6 +49,8 @@
 //! assert_eq!(x, std::i64::MIN);
 //! ```
 
+pub mod fast;
+
 /// Trait applied to all types that can be encoded as VLQ's.
 pub trait Vlq: Sized {
     /// Read a variable-length quantity from a reader.
