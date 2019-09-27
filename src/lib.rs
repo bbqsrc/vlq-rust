@@ -125,13 +125,13 @@ impl_vlq!(i16, u16, 3);
 impl_vlq!(i32, u32, 5);
 impl_vlq!(i64, u64, 10);
 impl_vlq!(i128, u128, 19);
-impl_vlq!(isize, usize, std::mem::size_of::<usize>() / 7 + 1);
+impl_vlq!(isize, usize, std::mem::size_of::<usize>() * 8 / 7 + 1);
 impl_vlq!(u8, 2);
 impl_vlq!(u16, 3);
 impl_vlq!(u32, 5);
 impl_vlq!(u64, 10);
 impl_vlq!(u128, 19);
-impl_vlq!(usize, std::mem::size_of::<usize>() / 7 + 1);
+impl_vlq!(usize, std::mem::size_of::<usize>() * 8 / 7 + 1);
 
 #[cfg(test)]
 mod tests {
