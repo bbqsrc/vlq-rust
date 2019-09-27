@@ -3,30 +3,40 @@
 extern crate test;
 use test::Bencher;
 
-use std::convert::TryFrom;
-use vlq_rust::Vlq;
+use std::io::Cursor;
+use vlq_rust::{ReadVlqExt, WriteVlqExt};
+
+fn roundtrip<T>(value: T) -> T
+where
+    Vec<u8>: WriteVlqExt<T>,
+    Cursor<Vec<u8>>: ReadVlqExt<T>,
+{
+    let mut buf = Vec::with_capacity(32);
+    buf.write_vlq(value).expect("successful write");
+    Cursor::new(buf).read_vlq().expect("successful read")
+}
 
 #[bench]
 fn test_u8(b: &mut Bencher) {
-    b.iter(|| u8::try_from(Vlq::from(std::u8::MAX)));
+    b.iter(|| roundtrip(std::u8::MAX));
 }
 
 #[bench]
 fn test_u16(b: &mut Bencher) {
-    b.iter(|| u16::try_from(Vlq::from(std::u16::MAX)));
+    b.iter(|| roundtrip(std::u16::MAX));
 }
 
 #[bench]
 fn test_u32(b: &mut Bencher) {
-    b.iter(|| u32::try_from(Vlq::from(std::u32::MAX)));
+    b.iter(|| roundtrip(std::u32::MAX));
 }
 
 #[bench]
 fn test_u64(b: &mut Bencher) {
-    b.iter(|| u64::try_from(Vlq::from(std::u64::MAX)));
+    b.iter(|| roundtrip(std::u64::MAX));
 }
 
 #[bench]
 fn test_u128(b: &mut Bencher) {
-    b.iter(|| u128::try_from(Vlq::from(std::u128::MAX)));
+    b.iter(|| roundtrip(std::u128::MAX));
 }

@@ -12,7 +12,8 @@
 //! ```markdown
 //!          11101010 01100000  [as u16]
 //!       11  1010100  1100000  [as separated into 7-bit groups]
-//! 10000011 01010100 01100000  [as VLQ-encoded variable-length integer]
+//!  1100000  1010100       11  [re-organized so LSB first]
+//! 01100000 01010100 10000011  [as VLQ-encoded variable-length integer]
 //! ```
 //!
 //! ## Usage
@@ -48,11 +49,11 @@
 //! assert_eq!(x, std::i64::MIN);
 //! ```
 
-pub trait ReadVlqExt<T>: std::io::Read {
+pub trait ReadVlqExt<T> {
     fn read_vlq(&mut self) -> std::io::Result<T>;
 }
 
-pub trait WriteVlqExt<T>: std::io::Write {
+pub trait WriteVlqExt<T> {
     fn write_vlq(&mut self, n: T) -> std::io::Result<()>;
 }
 
@@ -121,13 +122,13 @@ macro_rules! impl_vlq {
     };
 }
 
-impl_vlq!(i8, u8, 1);
+impl_vlq!(i8, u8, 2);
 impl_vlq!(i16, u16, 3);
 impl_vlq!(i32, u32, 5);
 impl_vlq!(i64, u64, 10);
 impl_vlq!(i128, u128, 19);
 impl_vlq!(isize, usize, std::mem::size_of::<usize>() / 7 + 1);
-impl_vlq!(u8, 1);
+impl_vlq!(u8, 2);
 impl_vlq!(u16, 3);
 impl_vlq!(u32, 5);
 impl_vlq!(u64, 10);
@@ -137,6 +138,41 @@ impl_vlq!(usize, std::mem::size_of::<usize>() / 7 + 1);
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Cursor;
+
+    fn roundtrip<T>(value: T) -> T
+    where
+        Vec<u8>: WriteVlqExt<T>,
+        Cursor<Vec<u8>>: ReadVlqExt<T>,
+    {
+        let mut buf = vec![];
+        buf.write_vlq(value).expect("successful write");
+        Cursor::new(buf).read_vlq().expect("successful read")
+    }
+
+    #[test]
+    fn test_smoke() {
+        assert_eq!(std::u8::MAX, roundtrip(std::u8::MAX));
+        assert_eq!(std::u8::MIN, roundtrip(std::u8::MIN));
+        assert_eq!(std::i8::MAX, roundtrip(std::i8::MAX));
+        assert_eq!(std::i8::MIN, roundtrip(std::i8::MIN));
+        assert_eq!(std::u16::MAX, roundtrip(std::u16::MAX));
+        assert_eq!(std::u16::MIN, roundtrip(std::u16::MIN));
+        assert_eq!(std::i16::MAX, roundtrip(std::i16::MAX));
+        assert_eq!(std::i16::MIN, roundtrip(std::i16::MIN));
+        assert_eq!(std::u32::MAX, roundtrip(std::u32::MAX));
+        assert_eq!(std::u32::MIN, roundtrip(std::u32::MIN));
+        assert_eq!(std::i32::MAX, roundtrip(std::i32::MAX));
+        assert_eq!(std::i32::MIN, roundtrip(std::i32::MIN));
+        assert_eq!(std::u64::MAX, roundtrip(std::u64::MAX));
+        assert_eq!(std::u64::MIN, roundtrip(std::u64::MIN));
+        assert_eq!(std::i64::MAX, roundtrip(std::i64::MAX));
+        assert_eq!(std::i64::MIN, roundtrip(std::i64::MIN));
+        assert_eq!(std::u128::MAX, roundtrip(std::u128::MAX));
+        assert_eq!(std::u128::MIN, roundtrip(std::u128::MIN));
+        assert_eq!(std::i128::MAX, roundtrip(std::i128::MAX));
+        assert_eq!(std::i128::MIN, roundtrip(std::i128::MIN));
+    }
 
     #[test]
     fn read_write() {
