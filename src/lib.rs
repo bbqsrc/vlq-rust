@@ -12,8 +12,8 @@
 //! ```markdown
 //!          11101010 01100000  [as u16]
 //!       11  1010100  1100000  [as separated into 7-bit groups]
-//!  1100000  1010100       11  [re-organized so LSB first]
-//! 01100000 01010100 10000011  [as VLQ-encoded variable-length integer]
+//!  1100000  1010100       11  [re-organized so least significant byte first]
+//! 11100000 11010100 00000011  [as VLQ-encoded variable-length integer]
 //! ```
 //!
 //! ## Usage
@@ -102,7 +102,7 @@ macro_rules! impl_vlq {
                             )
                         })?;
 
-                    if (buf[0] & 0b1000_0000) != 0 {
+                    if (buf[0] & 0b1000_0000) == 0 {
                         break;
                     }
 
@@ -117,23 +117,16 @@ macro_rules! impl_vlq {
                 let mut vlq_buf = [0u8; $cap];
                 let mut index = 0;
 
-                while n > 0 {
-                    vlq_buf[index] = (n & 0b0111_1111) as u8;
+                while n >= 0x80 {
+                    vlq_buf[index] = 0b1000_0000 | (n & 0b0111_1111) as u8;
                     index += 1;
                     n >>= 7;
                 }
 
-                match index {
-                    0 => {
-                        vlq_buf[index] = 0b1000_0000;
-                        index += 1;
-                    }
-                    n => {
-                        vlq_buf[n - 1] |= 0b1000_0000;
-                    }
-                }
-
-                writer.write_all(&vlq_buf[..index])
+                vlq_buf[index] = n as u8;
+                index += 1;
+                writer.write_all(&vlq_buf[..index])?;
+                Ok(())
             }
         }
     };
