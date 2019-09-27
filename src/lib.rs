@@ -51,18 +51,20 @@
 
 /// Trait applied to all types that can be encoded as VLQ's.
 pub trait Vlq: Sized {
-    /// Read the value from the given reader.
+    /// Read a variable-length quantity from a reader.
     fn from_reader<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self>;
 
-    /// Write the given value to a writer.
+    /// Write this variable-length quantity to a writer.
     fn to_writer<W: std::io::Write>(self, writer: &mut W) -> std::io::Result<()>;
 }
 
 pub trait ReadVlqExt<T> {
+    /// Read a variable-length quantity.
     fn read_vlq(&mut self) -> std::io::Result<T>;
 }
 
 pub trait WriteVlqExt<T> {
+    /// Write a variable-length quantity.
     fn write_vlq(&mut self, n: T) -> std::io::Result<()>;
 }
 
@@ -78,11 +80,12 @@ impl<T: Vlq, W: ::std::io::Write> WriteVlqExt<T> for W {
     }
 }
 
-macro_rules! impl_vlq {
-    ($ty:ty, $cap:expr) => {
-        impl_vlq!($ty, $ty, $cap);
+/// Helper macro to implement the `Vlq` trait for a primitive type.
+macro_rules! impl_primitive {
+    ($ty:ty) => {
+        impl_primitive!($ty, $ty);
     };
-    ($ty:ty, $uty:ty, $cap:expr) => {
+    ($ty:ty, $uty:ty) => {
         impl $crate::Vlq for $ty {
             fn from_reader<R: ::std::io::Read>(reader: &mut R) -> ::std::io::Result<Self> {
                 let mut buf = [0; 1];
@@ -102,7 +105,7 @@ macro_rules! impl_vlq {
                             )
                         })?;
 
-                    if (buf[0] & 0b1000_0000) == 0 {
+                    if (buf[0] & 0b1000_0000) != 0 {
                         break;
                     }
 
@@ -114,16 +117,16 @@ macro_rules! impl_vlq {
 
             fn to_writer<W: ::std::io::Write>(self, writer: &mut W) -> ::std::io::Result<()> {
                 let mut n = self as $uty;
-                let mut vlq_buf = [0u8; $cap];
+                let mut vlq_buf = [0u8; std::mem::size_of::<$ty>() * 8 / 7 + 1];
                 let mut index = 0;
 
                 while n >= 0x80 {
-                    vlq_buf[index] = 0b1000_0000 | (n & 0b0111_1111) as u8;
+                    vlq_buf[index] = (n & 0b0111_1111) as u8;
                     index += 1;
                     n >>= 7;
                 }
 
-                vlq_buf[index] = n as u8;
+                vlq_buf[index] = 0b1000_0000 | n as u8;
                 index += 1;
                 writer.write_all(&vlq_buf[..index])?;
                 Ok(())
@@ -132,18 +135,18 @@ macro_rules! impl_vlq {
     };
 }
 
-impl_vlq!(i8, u8, 2);
-impl_vlq!(i16, u16, 3);
-impl_vlq!(i32, u32, 5);
-impl_vlq!(i64, u64, 10);
-impl_vlq!(i128, u128, 19);
-impl_vlq!(isize, usize, std::mem::size_of::<usize>() * 8 / 7 + 1);
-impl_vlq!(u8, 2);
-impl_vlq!(u16, 3);
-impl_vlq!(u32, 5);
-impl_vlq!(u64, 10);
-impl_vlq!(u128, 19);
-impl_vlq!(usize, std::mem::size_of::<usize>() * 8 / 7 + 1);
+impl_primitive!(i8, u8);
+impl_primitive!(i16, u16);
+impl_primitive!(i32, u32);
+impl_primitive!(i64, u64);
+impl_primitive!(i128, u128);
+impl_primitive!(isize, usize);
+impl_primitive!(u8);
+impl_primitive!(u16);
+impl_primitive!(u32);
+impl_primitive!(u64);
+impl_primitive!(u128);
+impl_primitive!(usize);
 
 #[cfg(test)]
 mod tests {
@@ -160,24 +163,48 @@ mod tests {
     fn test_smoke() {
         assert_eq!(std::u8::MAX, roundtrip(std::u8::MAX));
         assert_eq!(std::u8::MIN, roundtrip(std::u8::MIN));
+        assert_eq!(0u8, roundtrip(0u8));
+
         assert_eq!(std::i8::MAX, roundtrip(std::i8::MAX));
         assert_eq!(std::i8::MIN, roundtrip(std::i8::MIN));
+        assert_eq!(0i8, roundtrip(0i8));
+        assert_eq!(-1i8, roundtrip(-1i8));
+
         assert_eq!(std::u16::MAX, roundtrip(std::u16::MAX));
         assert_eq!(std::u16::MIN, roundtrip(std::u16::MIN));
+        assert_eq!(0u16, roundtrip(0u16));
+
         assert_eq!(std::i16::MAX, roundtrip(std::i16::MAX));
         assert_eq!(std::i16::MIN, roundtrip(std::i16::MIN));
+        assert_eq!(0i16, roundtrip(0i16));
+        assert_eq!(-1i16, roundtrip(-1i16));
+
         assert_eq!(std::u32::MAX, roundtrip(std::u32::MAX));
         assert_eq!(std::u32::MIN, roundtrip(std::u32::MIN));
+        assert_eq!(0u32, roundtrip(0u32));
+
         assert_eq!(std::i32::MAX, roundtrip(std::i32::MAX));
         assert_eq!(std::i32::MIN, roundtrip(std::i32::MIN));
+        assert_eq!(0i32, roundtrip(0i32));
+        assert_eq!(-1i32, roundtrip(-1i32));
+
         assert_eq!(std::u64::MAX, roundtrip(std::u64::MAX));
         assert_eq!(std::u64::MIN, roundtrip(std::u64::MIN));
+        assert_eq!(0u64, roundtrip(0u64));
+
         assert_eq!(std::i64::MAX, roundtrip(std::i64::MAX));
         assert_eq!(std::i64::MIN, roundtrip(std::i64::MIN));
+        assert_eq!(0i64, roundtrip(0i64));
+        assert_eq!(-1i64, roundtrip(-1i64));
+
         assert_eq!(std::u128::MAX, roundtrip(std::u128::MAX));
         assert_eq!(std::u128::MIN, roundtrip(std::u128::MIN));
+        assert_eq!(0u128, roundtrip(0u128));
+
         assert_eq!(std::i128::MAX, roundtrip(std::i128::MAX));
         assert_eq!(std::i128::MIN, roundtrip(std::i128::MIN));
+        assert_eq!(0i128, roundtrip(0i128));
+        assert_eq!(-1i128, roundtrip(-1i128));
     }
 
     #[test]
