@@ -49,6 +49,15 @@
 //! assert_eq!(x, std::i64::MIN);
 //! ```
 
+/// Trait applied to all types that can be encoded as VLQ's.
+pub trait Vlq: Sized {
+    /// Read the value from the given reader.
+    fn from_reader<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self>;
+
+    /// Write the given value to a writer.
+    fn to_writer<W: std::io::Write>(self, writer: &mut W) -> std::io::Result<()>;
+}
+
 pub trait ReadVlqExt<T> {
     fn read_vlq(&mut self) -> std::io::Result<T>;
 }
@@ -57,19 +66,31 @@ pub trait WriteVlqExt<T> {
     fn write_vlq(&mut self, n: T) -> std::io::Result<()>;
 }
 
+impl<T: Vlq, R: ::std::io::Read> ReadVlqExt<T> for R {
+    fn read_vlq(&mut self) -> std::io::Result<T> {
+        T::from_reader(self)
+    }
+}
+
+impl<T: Vlq, W: ::std::io::Write> WriteVlqExt<T> for W {
+    fn write_vlq(&mut self, n: T) -> std::io::Result<()> {
+        n.to_writer(self)
+    }
+}
+
 macro_rules! impl_vlq {
     ($ty:ty, $cap:expr) => {
         impl_vlq!($ty, $ty, $cap);
     };
     ($ty:ty, $uty:ty, $cap:expr) => {
-        impl<R: std::io::Read> $crate::ReadVlqExt<$ty> for R {
-            fn read_vlq(&mut self) -> std::io::Result<$ty> {
+        impl $crate::Vlq for $ty {
+            fn from_reader<R: ::std::io::Read>(reader: &mut R) -> ::std::io::Result<Self> {
                 let mut buf = [0; 1];
                 let mut value: $uty = 0;
                 let mut shift = 1 as $uty;
 
                 loop {
-                    self.read_exact(&mut buf)?;
+                    reader.read_exact(&mut buf)?;
 
                     value = ((buf[0] & 0b0111_1111) as $uty)
                         .checked_mul(shift)
@@ -90,11 +111,9 @@ macro_rules! impl_vlq {
 
                 Ok(value as $ty)
             }
-        }
 
-        impl<W: std::io::Write> $crate::WriteVlqExt<$ty> for W {
-            fn write_vlq(&mut self, n: $ty) -> std::io::Result<()> {
-                let mut n = n as $uty;
+            fn to_writer<W: ::std::io::Write>(self, writer: &mut W) -> ::std::io::Result<()> {
+                let mut n = self as $uty;
                 let mut vlq_buf = [0u8; $cap];
                 let mut index = 0;
 
@@ -114,7 +133,7 @@ macro_rules! impl_vlq {
                     }
                 }
 
-                self.write_all(&vlq_buf[..index])
+                writer.write_all(&vlq_buf[..index])
             }
         }
     };
@@ -138,11 +157,7 @@ mod tests {
     use super::*;
     use std::io::Cursor;
 
-    fn roundtrip<T>(value: T) -> T
-    where
-        Vec<u8>: WriteVlqExt<T>,
-        Cursor<Vec<u8>>: ReadVlqExt<T>,
-    {
+    fn roundtrip<T: Vlq>(value: T) -> T {
         let mut buf = vec![];
         buf.write_vlq(value).expect("successful write");
         Cursor::new(buf).read_vlq().expect("successful read")

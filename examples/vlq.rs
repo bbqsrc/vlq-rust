@@ -12,7 +12,11 @@ fn main() {
     };
 
     let mut buf = vec![];
-    std::io::Cursor::new(&mut buf).write_vlq(n).unwrap();
-    let out = buf.iter().map(|x| format!("{:08b}", x)).collect::<Vec<_>>().join(" ");
+    buf.write_vlq(n).unwrap();
+    let out = buf
+        .iter()
+        .map(|x| format!("{:08b}", x))
+        .collect::<Vec<_>>()
+        .join(" ");
     println!("{}", out);
 }

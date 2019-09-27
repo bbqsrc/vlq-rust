@@ -4,13 +4,9 @@ extern crate test;
 use test::Bencher;
 
 use std::io::Cursor;
-use vlq_rust::{ReadVlqExt, WriteVlqExt};
+use vlq_rust::{ReadVlqExt as _, Vlq, WriteVlqExt as _};
 
-fn roundtrip<T>(value: T) -> T
-where
-    Vec<u8>: WriteVlqExt<T>,
-    Cursor<Vec<u8>>: ReadVlqExt<T>,
-{
+fn roundtrip<T: Vlq>(value: T) -> T {
     let mut buf = Vec::with_capacity(32);
     buf.write_vlq(value).expect("successful write");
     Cursor::new(buf).read_vlq().expect("successful read")
