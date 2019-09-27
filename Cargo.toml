@@ -4,6 +4,6 @@ description = "Variable-Length Quantity encoder/decoder"
 documentation = "https://docs.rs/vlq-rust"
 repository = "https://github.com/bbqsrc/vlq-rust"
 version = "0.2.0"
-authors = ["Brendan Molloy <brendan@bbqsrc.net>"]
+authors = ["Brendan Molloy <brendan@bbqsrc.net>", "John-John Tedro <udoprog@tedro.se>"]
 edition = "2018"
 license = "Apache-2.0 OR MIT"
