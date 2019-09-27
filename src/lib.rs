@@ -49,6 +49,9 @@
 //! assert_eq!(x, std::i64::MIN);
 //! ```
 
+#[cfg(feature = "bigint")]
+pub mod bigint;
+
 /// Trait applied to all types that can be encoded as VLQ's.
 pub trait Vlq: Sized {
     /// Read the value from the given reader.
