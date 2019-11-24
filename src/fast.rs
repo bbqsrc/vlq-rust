@@ -100,7 +100,6 @@ fn encode_len(n: u64) -> u8 {
 
 #[inline(always)]
 pub fn encode(n: u64) -> FastVlq {
-    n;
     let len = encode_len(n);
     let mut out_buf = [0u8; 9];
 
