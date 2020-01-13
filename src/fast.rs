@@ -221,6 +221,38 @@ impl std::fmt::Debug for FastVlq {
     }
 }
 
+pub trait ReadVlqExt<T> {
+    /// Read a variable-length quantity.
+    fn read_fast_vlq(&mut self) -> std::io::Result<T>;
+}
+
+pub trait WriteVlqExt<T> {
+    /// Write a variable-length quantity.
+    fn write_fast_vlq(&mut self, n: T) -> std::io::Result<()>;
+}
+
+impl<R: ::std::io::Read> ReadVlqExt<u64> for R {
+    fn read_fast_vlq(&mut self) -> std::io::Result<u64> {
+        let mut buf: [u8; 9] = [0; 9];
+        self.read_exact(&mut buf[0..1])?;
+
+        let len = decode_len(buf[0]);
+        if len != 1 {
+            self.read_exact(&mut buf[1..len as usize])?;
+        }
+
+        let vlq = FastVlq(buf);
+        Ok(decode(vlq))
+    }
+}
+
+impl<W: ::std::io::Write> WriteVlqExt<u64> for W {
+    fn write_fast_vlq(&mut self, n: u64) -> std::io::Result<()> {
+        let vlq = encode(n);
+        self.write_all(&vlq.0[0..vlq.len() as usize])
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

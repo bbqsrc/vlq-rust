@@ -7,11 +7,11 @@ use rand::prelude::*;
 use std::io::Cursor;
 use vlq_rust::{ReadVlqExt as _, Vlq, WriteVlqExt as _};
 
-fn roundtrip<T: Vlq>(value: T) -> T {
-    let mut buf = Vec::with_capacity(32);
-    buf.write_vlq(value).expect("successful write");
-    Cursor::new(buf).read_vlq().expect("successful read")
-}
+// fn roundtrip<T: Vlq>(value: T) -> T {
+//     let mut buf = Vec::with_capacity(32);
+//     buf.write_vlq(value).expect("successful write");
+//     Cursor::new(buf).read_vlq().expect("successful read")
+// }
 
 fn roundtrip_fast(value: u64) -> u64 {
     let encoded = vlq_rust::fast::encode(value);
@@ -102,35 +102,35 @@ fn test_fast_u64_decode(b: &mut Bencher) {
     b.iter(|| decode_fast(value))
 }
 
-#[bench]
-fn test_u8(b: &mut Bencher) {
-    let mut rng = rand::thread_rng();
-    b.iter(|| roundtrip(rng.gen::<u8>()));
-}
+// #[bench]
+// fn test_u8(b: &mut Bencher) {
+//     let mut rng = rand::thread_rng();
+//     b.iter(|| roundtrip(rng.gen::<u8>()));
+// }
 
-#[bench]
-fn test_u16(b: &mut Bencher) {
-    let mut rng = rand::thread_rng();
-    b.iter(|| roundtrip(rng.gen::<u16>()));
-}
+// #[bench]
+// fn test_u16(b: &mut Bencher) {
+//     let mut rng = rand::thread_rng();
+//     b.iter(|| roundtrip(rng.gen::<u16>()));
+// }
 
-#[bench]
-fn test_u32(b: &mut Bencher) {
-    let mut rng = rand::thread_rng();
-    b.iter(|| roundtrip(rng.gen::<u32>()));
-}
+// #[bench]
+// fn test_u32(b: &mut Bencher) {
+//     let mut rng = rand::thread_rng();
+//     b.iter(|| roundtrip(rng.gen::<u32>()));
+// }
 
-#[bench]
-fn test_u64(b: &mut Bencher) {
-    let mut rng = rand::thread_rng();
-    b.iter(|| roundtrip(rng.gen::<u64>()));
-}
+// #[bench]
+// fn test_u64(b: &mut Bencher) {
+//     let mut rng = rand::thread_rng();
+//     b.iter(|| roundtrip(rng.gen::<u64>()));
+// }
 
-#[bench]
-fn test_u128(b: &mut Bencher) {
-    let mut rng = rand::thread_rng();
-    b.iter(|| roundtrip(rng.gen::<u128>()));
-}
+// #[bench]
+// fn test_u128(b: &mut Bencher) {
+//     let mut rng = rand::thread_rng();
+//     b.iter(|| roundtrip(rng.gen::<u128>()));
+// }
 
 #[bench]
 fn test_u8_decode(b: &mut Bencher) {
