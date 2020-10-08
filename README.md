@@ -11,12 +11,8 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-vlq = { package = "vlq-rust", version = "0.2" }
+vlq = { package = "vlq-rust", version = "0.4" }
 ```
-
-## Where is this used?
-
-* [box](https://github.com/bbqsrc/box) - a modern replacement for the zip file format
 
 ## License
 
